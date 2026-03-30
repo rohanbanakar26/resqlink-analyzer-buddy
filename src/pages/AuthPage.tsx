@@ -29,11 +29,6 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (isAuthenticated) {
-    navigate("/emergency");
-    return null;
-  }
-
   const roleMeta = useMemo(
     () => ROLE_OPTIONS.find((r) => r.id === registerState.role) ?? ROLE_OPTIONS[0],
     [registerState.role],
