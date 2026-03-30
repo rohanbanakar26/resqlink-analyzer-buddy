@@ -35,6 +35,11 @@ export default function NetworkPage() {
       .sort((a: any, b: any) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
   }, [rows, location, distanceLimit, category]);
 
+  if (!isAuthenticated) {
+    navigate("/auth");
+    return null;
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-6">
       <div>
