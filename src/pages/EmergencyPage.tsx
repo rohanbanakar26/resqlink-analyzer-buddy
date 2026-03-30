@@ -24,12 +24,16 @@ export default function EmergencyPage() {
     return null;
   }
 
-  const handleSend = () => {
-    const id = createEmergency({ category, urgency, description });
-    setLastId(id);
-    setSent(true);
-    setDescription("");
-    setTimeout(() => setSent(false), 4000);
+  const handleSend = async () => {
+    try {
+      const id = await createEmergency({ category, urgency, description });
+      setLastId(id);
+      setSent(true);
+      setDescription("");
+      setTimeout(() => setSent(false), 4000);
+    } catch (err) {
+      console.error("Failed to create emergency:", err);
+    }
   };
 
   const catMeta = getCategoryMeta(category);

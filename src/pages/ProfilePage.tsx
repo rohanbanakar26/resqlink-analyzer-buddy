@@ -109,8 +109,8 @@ export default function ProfilePage() {
       <Button
         variant="outline"
         className="w-full text-destructive hover:bg-destructive/10"
-        onClick={() => {
-          logout();
+        onClick={async () => {
+          await logout();
           navigate("/");
         }}
       >
