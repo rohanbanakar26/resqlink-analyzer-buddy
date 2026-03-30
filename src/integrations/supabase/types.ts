@@ -14,16 +14,228 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      emergency_requests: {
+        Row: {
+          assigned_volunteer_id: string | null
+          category: string
+          citizen_name: string | null
+          created_at: string
+          description: string
+          eta: number | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          ngo_id: string | null
+          photo_url: string | null
+          priority_score: number | null
+          status: string
+          updated_at: string
+          urgency: string
+          user_id: string
+        }
+        Insert: {
+          assigned_volunteer_id?: string | null
+          category: string
+          citizen_name?: string | null
+          created_at?: string
+          description?: string
+          eta?: number | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          ngo_id?: string | null
+          photo_url?: string | null
+          priority_score?: number | null
+          status?: string
+          updated_at?: string
+          urgency?: string
+          user_id: string
+        }
+        Update: {
+          assigned_volunteer_id?: string | null
+          category?: string
+          citizen_name?: string | null
+          created_at?: string
+          description?: string
+          eta?: number | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          ngo_id?: string | null
+          photo_url?: string | null
+          priority_score?: number | null
+          status?: string
+          updated_at?: string
+          urgency?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "emergency_requests_assigned_volunteer_id_fkey"
+            columns: ["assigned_volunteer_id"]
+            isOneToOne: false
+            referencedRelation: "volunteers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "emergency_requests_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ngos: {
+        Row: {
+          capacity: number | null
+          created_at: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          ngo_name: string
+          services: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          ngo_name: string
+          services?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          ngo_name?: string
+          services?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          phone: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          trust_score: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          trust_score?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          trust_score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      volunteers: {
+        Row: {
+          available: boolean | null
+          completed_tasks: number | null
+          created_at: string
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          skills: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          available?: boolean | null
+          completed_tasks?: number | null
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          skills?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          available?: boolean | null
+          completed_tasks?: number | null
+          created_at?: string
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          skills?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "citizen" | "volunteer" | "ngo"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +362,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["citizen", "volunteer", "ngo"],
+    },
   },
 } as const
