@@ -1,7 +1,8 @@
-import { createContext, useContext, useMemo, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useCallback, useEffect, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import type { GeoPoint } from "../utils/geo";
-import { haversineDistance, formatDistance } from "../utils/geo";
-import { findBestNgo, findBestVolunteer } from "../utils/matching";
+import { haversineDistance } from "../utils/geo";
 import { buildPriorityZones, calculatePriorityScore, getUrgencyValue, getSeverityValue } from "../utils/analytics";
 
 // Types
@@ -27,6 +28,7 @@ export interface EmergencyRequest {
 
 export interface Volunteer {
   id: string;
+  userId: string;
   name: string;
   email: string;
   skills: string[];
@@ -39,6 +41,7 @@ export interface Volunteer {
 
 export interface Ngo {
   id: string;
+  userId: string;
   ngoName: string;
   email: string;
   services: string[];
@@ -50,6 +53,7 @@ export interface Ngo {
 
 export interface UserProfile {
   id: string;
+  userId: string;
   name: string;
   email: string;
   role: "citizen" | "volunteer" | "ngo";
@@ -71,55 +75,132 @@ interface AppDataContextValue {
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   emergencyMode: boolean;
-  createEmergency: (data: { category: string; urgency: string; description: string }) => string;
-  acceptRequest: (id: string) => void;
-  assignVolunteer: (requestId: string, volunteerId: string) => void;
-  volunteerAdvance: (requestId: string, status: string) => void;
-  completeRequest: (id: string) => void;
-  login: (email: string, password: string) => boolean;
-  register: (data: any) => boolean;
-  logout: () => void;
+  createEmergency: (data: { category: string; urgency: string; description: string }) => Promise<string>;
+  acceptRequest: (id: string) => Promise<void>;
+  assignVolunteer: (requestId: string, volunteerId: string) => Promise<void>;
+  volunteerAdvance: (requestId: string, status: string) => Promise<void>;
+  completeRequest: (id: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (data: any) => Promise<boolean>;
+  logout: () => Promise<void>;
   setEmergencyMode: (v: boolean) => void;
 }
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
-// Demo data
-const DEMO_LOCATION: GeoPoint = { lat: 12.9716, lng: 77.5946 }; // Bangalore
+const DEMO_LOCATION: GeoPoint = { lat: 12.9716, lng: 77.5946 };
 
-const DEMO_VOLUNTEERS: Volunteer[] = [
-  { id: "v1", name: "Priya Sharma", email: "priya@help.org", skills: ["medical", "first aid"], location: { lat: 12.975, lng: 77.590 }, available: true, trustScore: 4.8, completedTasks: 23 },
-  { id: "v2", name: "Arjun Patel", email: "arjun@help.org", skills: ["food", "logistics", "delivery"], location: { lat: 12.965, lng: 77.600 }, available: true, trustScore: 4.5, completedTasks: 15 },
-  { id: "v3", name: "Meera Reddy", email: "meera@help.org", skills: ["rescue", "disaster", "transport"], location: { lat: 12.980, lng: 77.585 }, available: true, trustScore: 4.9, completedTasks: 41 },
-  { id: "v4", name: "Karan Singh", email: "karan@help.org", skills: ["shelter", "community support"], location: { lat: 12.960, lng: 77.610 }, available: false, trustScore: 4.3, completedTasks: 8 },
-];
-
-const DEMO_NGOS: Ngo[] = [
-  { id: "n1", ngoName: "Bangalore Relief Force", email: "brf@ngo.org", services: ["disaster", "food", "shelter"], location: { lat: 12.970, lng: 77.600 }, trustScore: 4.9, capacity: 50 },
-  { id: "n2", ngoName: "Care Foundation India", email: "cfi@ngo.org", services: ["medical", "senior", "education"], location: { lat: 12.985, lng: 77.580 }, trustScore: 4.7, capacity: 30 },
-  { id: "n3", ngoName: "Green Helpers", email: "gh@ngo.org", services: ["sanitation", "education"], location: { lat: 12.950, lng: 77.620 }, trustScore: 4.4, capacity: 15 },
-];
-
-const INITIAL_REQUESTS: EmergencyRequest[] = [
-  { id: "r1", userId: "u1", category: "food", urgency: "high", description: "Community kitchen needed for 50+ families affected by flooding in Koramangala", location: { lat: 12.935, lng: 77.612 }, status: "Volunteer assigned", citizenName: "Ravi Kumar", ngoId: "n1", ngoName: "Bangalore Relief Force", assignedVolunteerId: "v2", volunteerName: "Arjun Patel", eta: 15, priorityScore: 210, photoUrl: "", createdAt: Date.now() - 3600000 },
-  { id: "r2", userId: "u2", category: "medical", urgency: "critical", description: "Elderly person needs urgent medical attention, medication running out", location: { lat: 12.978, lng: 77.592 }, status: "In progress", citizenName: "Sunita Devi", ngoId: "n2", ngoName: "Care Foundation India", assignedVolunteerId: "v1", volunteerName: "Priya Sharma", eta: 5, priorityScore: 280, photoUrl: "", createdAt: Date.now() - 1800000 },
-  { id: "r3", userId: "u3", category: "disaster", urgency: "critical", description: "Building partially collapsed after heavy rains, families trapped on upper floors", location: { lat: 12.960, lng: 77.595 }, status: "Accepted", citizenName: "Mohammed Ali", ngoId: "n1", ngoName: "Bangalore Relief Force", assignedVolunteerId: "", volunteerName: "", eta: null, priorityScore: 320, photoUrl: "", createdAt: Date.now() - 900000 },
-  { id: "r4", userId: "u4", category: "shelter", urgency: "high", description: "Family of 6 displaced, need temporary shelter urgently", location: { lat: 12.945, lng: 77.605 }, status: "Requested", citizenName: "Lakshmi Bai", ngoId: "", ngoName: "", assignedVolunteerId: "", volunteerName: "", eta: null, priorityScore: 190, photoUrl: "", createdAt: Date.now() - 600000 },
-  { id: "r5", userId: "u5", category: "sanitation", urgency: "medium", description: "Drainage overflow causing health hazard in residential area", location: { lat: 12.990, lng: 77.575 }, status: "Completed", citizenName: "Venkat Rao", ngoId: "n3", ngoName: "Green Helpers", assignedVolunteerId: "v3", volunteerName: "Meera Reddy", eta: null, priorityScore: 120, photoUrl: "", createdAt: Date.now() - 7200000 },
-];
+function toGeo(lat: number | null, lng: number | null): GeoPoint | null {
+  return lat != null && lng != null ? { lat, lng } : null;
+}
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [requests, setRequests] = useState<EmergencyRequest[]>(INITIAL_REQUESTS);
+  const { user, loading: authLoading, signIn, signUp, signOut } = useAuth();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [requests, setRequests] = useState<EmergencyRequest[]>([]);
+  const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [ngos, setNgos] = useState<Ngo[]>([]);
   const [emergencyMode, setEmergencyMode] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+
   const location = DEMO_LOCATION;
+  const isAuthenticated = user !== null;
 
-  const isAuthenticated = currentUser !== null;
+  // Fetch profile
+  useEffect(() => {
+    if (!user) { setProfile(null); return; }
+    supabase.from("profiles").select("*").eq("user_id", user.id).single()
+      .then(({ data }) => {
+        if (data) {
+          setProfile({
+            id: data.id,
+            userId: data.user_id,
+            name: data.full_name || data.email.split("@")[0],
+            email: data.email,
+            role: data.role as "citizen" | "volunteer" | "ngo",
+            phone: data.phone || "",
+            location: toGeo(data.location_lat, data.location_lng),
+            trustScore: data.trust_score ?? 4.5,
+          });
+        }
+      });
+  }, [user]);
 
-  const activeRequests = useMemo(
-    () => requests.filter((r) => r.status !== "Completed"),
-    [requests],
-  );
+  // Fetch data
+  useEffect(() => {
+    if (!user) { setDataLoading(false); return; }
+
+    const fetchAll = async () => {
+      const [reqRes, volRes, ngoRes] = await Promise.all([
+        supabase.from("emergency_requests").select("*, ngos(ngo_name), volunteers(user_id, profiles:profiles!volunteers_user_id_fkey(full_name))").order("created_at", { ascending: false }),
+        supabase.from("volunteers").select("*, profiles!volunteers_user_id_fkey(full_name, email, trust_score)"),
+        supabase.from("ngos").select("*, profiles!ngos_user_id_fkey(full_name, email, trust_score)"),
+      ]);
+
+      if (reqRes.data) {
+        setRequests(reqRes.data.map((r: any) => ({
+          id: r.id,
+          userId: r.user_id,
+          category: r.category,
+          urgency: r.urgency,
+          description: r.description,
+          location: toGeo(r.location_lat, r.location_lng),
+          status: r.status,
+          citizenName: r.citizen_name || "",
+          ngoId: r.ngo_id || "",
+          ngoName: r.ngos?.ngo_name || "",
+          assignedVolunteerId: r.assigned_volunteer_id || "",
+          volunteerName: r.volunteers?.profiles?.full_name || "",
+          eta: r.eta,
+          priorityScore: r.priority_score || 0,
+          photoUrl: r.photo_url || "",
+          createdAt: new Date(r.created_at).getTime(),
+        })));
+      }
+
+      if (volRes.data) {
+        setVolunteers(volRes.data.map((v: any) => ({
+          id: v.id,
+          userId: v.user_id,
+          name: v.profiles?.full_name || "",
+          email: v.profiles?.email || "",
+          skills: v.skills || [],
+          location: toGeo(v.location_lat, v.location_lng),
+          available: v.available ?? true,
+          trustScore: v.profiles?.trust_score ?? 4.5,
+          completedTasks: v.completed_tasks || 0,
+        })));
+      }
+
+      if (ngoRes.data) {
+        setNgos(ngoRes.data.map((n: any) => ({
+          id: n.id,
+          userId: n.user_id,
+          ngoName: n.ngo_name,
+          email: n.profiles?.email || "",
+          services: n.services || [],
+          location: toGeo(n.location_lat, n.location_lng),
+          trustScore: n.profiles?.trust_score ?? 4.5,
+          capacity: n.capacity || 10,
+        })));
+      }
+
+      setDataLoading(false);
+    };
+
+    fetchAll();
+
+    // Realtime subscription for requests
+    const channel = supabase.channel("requests-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "emergency_requests" }, () => {
+        fetchAll();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  const activeRequests = useMemo(() => requests.filter((r) => r.status !== "Completed"), [requests]);
 
   const nearbyRequests = useMemo(() => {
     return activeRequests
@@ -128,19 +209,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, [activeRequests, location]);
 
   const myRequests = useMemo(() => {
-    if (!currentUser) return [];
-    if (currentUser.role === "citizen") return requests.filter((r) => r.userId === currentUser.id);
-    if (currentUser.role === "volunteer") return requests.filter((r) => r.assignedVolunteerId === currentUser.id);
-    if (currentUser.role === "ngo") return requests.filter((r) => r.ngoId === currentUser.id);
+    if (!profile) return [];
+    if (profile.role === "citizen") return requests.filter((r) => r.userId === user?.id);
+    if (profile.role === "volunteer") {
+      const vol = volunteers.find((v) => v.userId === user?.id);
+      return vol ? requests.filter((r) => r.assignedVolunteerId === vol.id) : [];
+    }
+    if (profile.role === "ngo") {
+      const ngo = ngos.find((n) => n.userId === user?.id);
+      return ngo ? requests.filter((r) => r.ngoId === ngo.id) : [];
+    }
     return [];
-  }, [requests, currentUser]);
+  }, [requests, profile, user, volunteers, ngos]);
 
   const priorityZones = useMemo(() => buildPriorityZones([], requests), [requests]);
 
-  const createEmergency = useCallback((data: { category: string; urgency: string; description: string }) => {
-    const id = `r-${Date.now()}`;
-    const bestNgo = findBestNgo({ ...data, location }, DEMO_NGOS);
-    const bestVol = findBestVolunteer({ ...data, location }, DEMO_VOLUNTEERS);
+  const createEmergency = useCallback(async (data: { category: string; urgency: string; description: string }) => {
     const ps = calculatePriorityScore({
       averageUrgency: getUrgencyValue(data.urgency),
       severity: getSeverityValue(data.category),
@@ -148,85 +232,77 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       recentReports: 1,
     });
 
-    const newReq: EmergencyRequest = {
-      id,
-      userId: currentUser?.id ?? "anon",
+    const { data: row, error } = await supabase.from("emergency_requests").insert({
+      user_id: user!.id,
       category: data.category,
       urgency: data.urgency,
       description: data.description,
-      location,
-      status: bestVol ? "Volunteer assigned" : bestNgo ? "Accepted" : "Requested",
-      citizenName: currentUser?.name ?? "Citizen",
-      ngoId: bestNgo?.id ?? "",
-      ngoName: bestNgo?.ngoName ?? "",
-      assignedVolunteerId: bestVol?.id ?? "",
-      volunteerName: bestVol?.name ?? "",
-      eta: bestVol?.distanceKm ? Math.max(5, Math.round(bestVol.distanceKm * 3)) : null,
-      priorityScore: ps,
-      photoUrl: "",
-      createdAt: Date.now(),
-    };
+      location_lat: location.lat,
+      location_lng: location.lng,
+      citizen_name: profile?.name || "",
+      priority_score: ps,
+    }).select().single();
 
-    setRequests((prev) => [newReq, ...prev]);
-    return id;
-  }, [currentUser, location]);
+    if (error) throw error;
+    return row.id;
+  }, [user, profile, location]);
 
-  const acceptRequest = useCallback((id: string) => {
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "Accepted", ngoId: currentUser?.id ?? "", ngoName: currentUser?.name ?? "" } : r));
-  }, [currentUser]);
+  const acceptRequest = useCallback(async (id: string) => {
+    const ngo = ngos.find((n) => n.userId === user?.id);
+    await supabase.from("emergency_requests").update({
+      status: "Accepted",
+      ngo_id: ngo?.id || null,
+    }).eq("id", id);
+  }, [user, ngos]);
 
-  const assignVolunteer = useCallback((requestId: string, volunteerId: string) => {
-    const vol = DEMO_VOLUNTEERS.find((v) => v.id === volunteerId);
-    setRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status: "Volunteer assigned", assignedVolunteerId: volunteerId, volunteerName: vol?.name ?? "" } : r));
+  const assignVolunteer = useCallback(async (requestId: string, volunteerId: string) => {
+    await supabase.from("emergency_requests").update({
+      status: "Volunteer assigned",
+      assigned_volunteer_id: volunteerId,
+    }).eq("id", requestId);
   }, []);
 
-  const volunteerAdvance = useCallback((requestId: string, status: string) => {
-    setRequests((prev) => prev.map((r) => r.id === requestId ? { ...r, status } : r));
+  const volunteerAdvance = useCallback(async (requestId: string, status: string) => {
+    await supabase.from("emergency_requests").update({ status }).eq("id", requestId);
   }, []);
 
-  const completeRequest = useCallback((id: string) => {
-    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, status: "Completed" } : r));
+  const completeRequest = useCallback(async (id: string) => {
+    await supabase.from("emergency_requests").update({ status: "Completed" }).eq("id", id);
   }, []);
 
-  const login = useCallback((email: string, _password: string) => {
-    setCurrentUser({
-      id: "demo-user",
-      name: email.split("@")[0],
-      email,
-      role: "citizen",
-      phone: "",
-      location: DEMO_LOCATION,
-      trustScore: 4.5,
-    });
+  const login = useCallback(async (email: string, password: string) => {
+    await signIn(email, password);
     return true;
-  }, []);
+  }, [signIn]);
 
-  const register = useCallback((data: any) => {
-    setCurrentUser({
-      id: "demo-user",
-      name: data.fullName || data.ngoName || "User",
-      email: data.email,
+  const register = useCallback(async (data: any) => {
+    const metadata: Record<string, string> = {
+      full_name: data.fullName || data.ngoName || "",
       role: data.role || "citizen",
-      phone: data.phone || "",
-      location: DEMO_LOCATION,
-      trustScore: 4.5,
-    });
-    return true;
-  }, []);
+    };
+    await signUp(data.email, data.password, metadata);
 
-  const logout = useCallback(() => setCurrentUser(null), []);
+    // After signup, if volunteer or ngo, create their extra record
+    // This will be handled after the user confirms email and logs in
+    return true;
+  }, [signUp]);
+
+  const logout = useCallback(async () => {
+    await signOut();
+    setProfile(null);
+  }, [signOut]);
 
   const value = useMemo(() => ({
-    loading: false,
+    loading: authLoading || dataLoading,
     location,
     requests,
     activeRequests,
     nearbyRequests,
     myRequests,
-    volunteers: DEMO_VOLUNTEERS,
-    ngos: DEMO_NGOS,
+    volunteers,
+    ngos,
     priorityZones,
-    currentUser,
+    currentUser: profile,
     isAuthenticated,
     emergencyMode,
     createEmergency,
@@ -238,7 +314,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     setEmergencyMode,
-  }), [requests, activeRequests, nearbyRequests, myRequests, priorityZones, currentUser, isAuthenticated, emergencyMode, createEmergency, acceptRequest, assignVolunteer, volunteerAdvance, completeRequest, login, register, logout]);
+  }), [authLoading, dataLoading, requests, activeRequests, nearbyRequests, myRequests, volunteers, ngos, priorityZones, profile, isAuthenticated, emergencyMode, createEmergency, acceptRequest, assignVolunteer, volunteerAdvance, completeRequest, login, register, logout]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }
