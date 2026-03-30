@@ -17,11 +17,6 @@ export default function NetworkPage() {
   const [distanceLimit, setDistanceLimit] = useState(25);
   const [category, setCategory] = useState("all");
 
-  if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
-  }
-
   const rows = mode === "ngos" ? ngos : volunteers;
 
   const filteredRows = useMemo(() => {

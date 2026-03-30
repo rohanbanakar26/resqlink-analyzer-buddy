@@ -34,6 +34,11 @@ export default function AuthPage() {
     [registerState.role],
   );
 
+  if (isAuthenticated) {
+    navigate("/emergency");
+    return null;
+  }
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
