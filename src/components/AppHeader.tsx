@@ -44,7 +44,7 @@ export default function AppHeader() {
           )}
 
           {isAuthenticated && (
-            <Button variant="ghost" size="sm" onClick={() => { logout(); navigate("/"); }}>
+            <Button variant="ghost" size="sm" onClick={async () => { await logout(); navigate("/"); }}>
               <LogOut className="w-4 h-4" />
             </Button>
           )}
