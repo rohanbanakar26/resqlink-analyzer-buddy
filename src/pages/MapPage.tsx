@@ -13,12 +13,10 @@ function requestColor(req: any) {
 }
 
 export default function MapPage() {
-  const navigate = useNavigate();
   const { nearbyRequests, volunteers, ngos, location, isAuthenticated, priorityZones } = useAppData();
 
   if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const center: [number, number] = location ? [location.lat, location.lng] : [12.9716, 77.5946];
