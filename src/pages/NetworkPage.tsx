@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { REQUEST_CATEGORIES } from "../data/system";
 import { formatDistance, haversineDistance } from "../utils/geo";
