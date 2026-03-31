@@ -18,15 +18,10 @@ export default function MapPage() {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
-  }
-
   const center: [number, number] = location ? [location.lat, location.lng] : [12.9716, 77.5946];
 
-  // Initialize and update map
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !isAuthenticated) return;
 
     if (!mapRef.current) {
       mapRef.current = L.map(containerRef.current).setView(center, 13);
@@ -35,14 +30,10 @@ export default function MapPage() {
       }).addTo(mapRef.current);
     }
 
-    // Clear existing markers
     mapRef.current.eachLayer((layer) => {
-      if (layer instanceof L.CircleMarker) {
-        mapRef.current!.removeLayer(layer);
-      }
+      if (layer instanceof L.CircleMarker) mapRef.current!.removeLayer(layer);
     });
 
-    // Add request markers
     nearbyRequests.filter((r) => r.location).forEach((req) => {
       L.circleMarker([req.location!.lat, req.location!.lng], {
         radius: req.urgency === "critical" ? 10 : 7,
@@ -55,51 +46,31 @@ export default function MapPage() {
         .addTo(mapRef.current!);
     });
 
-    // Add volunteer markers
     volunteers.filter((v) => v.location).forEach((vol) => {
       L.circleMarker([vol.location!.lat, vol.location!.lng], {
-        radius: 6,
-        fillColor: "#3b82f6",
-        color: "#3b82f6",
-        weight: 2,
-        fillOpacity: 0.7,
+        radius: 6, fillColor: "#3b82f6", color: "#3b82f6", weight: 2, fillOpacity: 0.7,
       })
         .bindPopup(`<strong>${vol.name}</strong><br/>${(vol.skills || []).join(", ")}<br/>${vol.available ? "Available" : "Busy"}`)
         .addTo(mapRef.current!);
     });
 
-    // Add NGO markers
     ngos.filter((n) => n.location).forEach((ngo) => {
       L.circleMarker([ngo.location!.lat, ngo.location!.lng], {
-        radius: 8,
-        fillColor: "#22c55e",
-        color: "#22c55e",
-        weight: 2,
-        fillOpacity: 0.7,
+        radius: 8, fillColor: "#22c55e", color: "#22c55e", weight: 2, fillOpacity: 0.7,
       })
         .bindPopup(`<strong>${ngo.ngoName}</strong><br/>${(ngo.services || []).join(", ")}<br/>Capacity: ${ngo.capacity}`)
         .addTo(mapRef.current!);
     });
 
-    // Add user location marker
     if (location) {
       L.circleMarker([location.lat, location.lng], {
-        radius: 8,
-        fillColor: "#8b5cf6",
-        color: "#8b5cf6",
-        weight: 3,
-        fillOpacity: 0.9,
+        radius: 8, fillColor: "#8b5cf6", color: "#8b5cf6", weight: 3, fillOpacity: 0.9,
       })
         .bindPopup("Your location")
         .addTo(mapRef.current!);
     }
+  }, [nearbyRequests, volunteers, ngos, location, isAuthenticated]);
 
-    return () => {
-      // Don't destroy map on data updates, only on unmount
-    };
-  }, [nearbyRequests, volunteers, ngos, location]);
-
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (mapRef.current) {
@@ -108,6 +79,10 @@ export default function MapPage() {
       }
     };
   }, []);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 pb-24 space-y-4">
