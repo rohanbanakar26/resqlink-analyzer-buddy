@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { getCategoryMeta, STATUS_COPY } from "../data/system";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { User, LogOut, Star, CheckCircle2, Clock, Shield } from "lucide-react";
 
 export default function ProfilePage() {
-  const navigate = useNavigate();
   const { currentUser, isAuthenticated, myRequests, logout } = useAppData();
 
   if (!isAuthenticated || !currentUser) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const activeCount = myRequests.filter((r) => r.status !== "Completed").length;
@@ -111,7 +109,7 @@ export default function ProfilePage() {
         className="w-full text-destructive hover:bg-destructive/10"
         onClick={async () => {
           await logout();
-          navigate("/");
+          window.location.href = "/";
         }}
       >
         <LogOut className="w-4 h-4 mr-2" /> Sign Out

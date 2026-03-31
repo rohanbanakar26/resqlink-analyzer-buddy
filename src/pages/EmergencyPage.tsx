@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { REQUEST_CATEGORIES, URGENCY_OPTIONS, getCategoryMeta, STATUS_COPY } from "../data/system";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Send, Clock, CheckCircle2, MapPin } from "lucide-react";
 
 export default function EmergencyPage() {
-  const navigate = useNavigate();
   const { currentUser, isAuthenticated, createEmergency, myRequests } = useAppData();
   const [category, setCategory] = useState("general");
   const [urgency, setUrgency] = useState("critical");
@@ -20,8 +19,7 @@ export default function EmergencyPage() {
   const [lastId, setLastId] = useState<string | null>(null);
 
   if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const handleSend = async () => {

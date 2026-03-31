@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,12 +13,10 @@ function requestColor(req: any) {
 }
 
 export default function MapPage() {
-  const navigate = useNavigate();
   const { nearbyRequests, volunteers, ngos, location, isAuthenticated, priorityZones } = useAppData();
 
   if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const center: [number, number] = location ? [location.lat, location.lng] : [12.9716, 77.5946];

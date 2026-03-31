@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { REQUEST_CATEGORIES } from "../data/system";
 import { formatDistance, haversineDistance } from "../utils/geo";
@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Users, Building2, Star, MapPin } from "lucide-react";
 
 export default function NetworkPage() {
-  const navigate = useNavigate();
   const { ngos, volunteers, location, isAuthenticated } = useAppData();
   const [mode, setMode] = useState<"ngos" | "volunteers">("ngos");
   const [distanceLimit, setDistanceLimit] = useState(25);
@@ -36,8 +35,7 @@ export default function NetworkPage() {
   }, [rows, location, distanceLimit, category]);
 
   if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   return (

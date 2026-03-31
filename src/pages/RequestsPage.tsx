@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { getCategoryMeta, STATUS_COPY } from "../data/system";
 import { formatDistance, haversineDistance, getDirectionsUrl } from "../utils/geo";
@@ -10,15 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Navigation, CheckCircle2, Play, UserCheck, Clock } from "lucide-react";
 
 export default function RequestsPage() {
-  const navigate = useNavigate();
   const {
     currentUser, isAuthenticated, location, requests, nearbyRequests,
     myRequests, volunteers, acceptRequest, assignVolunteer, volunteerAdvance, completeRequest,
   } = useAppData();
 
   if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const role = currentUser?.role ?? "citizen";
