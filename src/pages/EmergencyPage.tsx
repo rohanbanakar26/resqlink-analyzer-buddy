@@ -11,7 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, Send, Clock, CheckCircle2, MapPin } from "lucide-react";
 
 export default function EmergencyPage() {
-  const navigate = useNavigate();
   const { currentUser, isAuthenticated, createEmergency, myRequests } = useAppData();
   const [category, setCategory] = useState("general");
   const [urgency, setUrgency] = useState("critical");
@@ -20,8 +19,7 @@ export default function EmergencyPage() {
   const [lastId, setLastId] = useState<string | null>(null);
 
   if (!isAuthenticated) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const handleSend = async () => {

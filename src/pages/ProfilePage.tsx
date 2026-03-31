@@ -8,12 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { User, LogOut, Star, CheckCircle2, Clock, Shield } from "lucide-react";
 
 export default function ProfilePage() {
-  const navigate = useNavigate();
   const { currentUser, isAuthenticated, myRequests, logout } = useAppData();
 
   if (!isAuthenticated || !currentUser) {
-    navigate("/auth");
-    return null;
+    return <Navigate to="/auth" replace />;
   }
 
   const activeCount = myRequests.filter((r) => r.status !== "Completed").length;
