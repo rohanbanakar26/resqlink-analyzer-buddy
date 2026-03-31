@@ -88,7 +88,7 @@ interface AppDataContextValue {
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
-const DEMO_LOCATION: GeoPoint = { lat: 12.9716, lng: 77.5946 };
+const FALLBACK_LOCATION: GeoPoint = { lat: 12.9716, lng: 77.5946 };
 
 function toGeo(lat: number | null, lng: number | null): GeoPoint | null {
   return lat != null && lng != null ? { lat, lng } : null;
@@ -102,9 +102,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [ngos, setNgos] = useState<Ngo[]>([]);
   const [emergencyMode, setEmergencyMode] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [location, setLocation] = useState<GeoPoint | null>(FALLBACK_LOCATION);
 
-  const location = DEMO_LOCATION;
   const isAuthenticated = user !== null;
+
+  // Real browser geolocation
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {}, // keep fallback on error
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {},
+      { enableHighAccuracy: true }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   // Fetch profile
   useEffect(() => {
