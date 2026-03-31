@@ -1,3 +1,4 @@
+// react-leaflet v4 compatible
 import { Navigate } from "react-router-dom";
 import { useAppData } from "../context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
