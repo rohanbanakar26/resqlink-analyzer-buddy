@@ -1,10 +1,10 @@
-// react-leaflet v4 compatible
+import { useEffect, useRef } from "react";
 import { Navigate } from "react-router-dom";
+import L from "leaflet";
 import { useAppData } from "../context/AppDataContext";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, AlertTriangle } from "lucide-react";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { Card } from "@/components/ui/card";
+import { MapPin } from "lucide-react";
 
 function requestColor(req: any) {
   if (req.status === "Completed") return "#22c55e";
@@ -15,12 +15,99 @@ function requestColor(req: any) {
 
 export default function MapPage() {
   const { nearbyRequests, volunteers, ngos, location, isAuthenticated, priorityZones } = useAppData();
+  const mapRef = useRef<L.Map | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
 
   const center: [number, number] = location ? [location.lat, location.lng] : [12.9716, 77.5946];
+
+  // Initialize and update map
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    if (!mapRef.current) {
+      mapRef.current = L.map(containerRef.current).setView(center, 13);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      }).addTo(mapRef.current);
+    }
+
+    // Clear existing markers
+    mapRef.current.eachLayer((layer) => {
+      if (layer instanceof L.CircleMarker) {
+        mapRef.current!.removeLayer(layer);
+      }
+    });
+
+    // Add request markers
+    nearbyRequests.filter((r) => r.location).forEach((req) => {
+      L.circleMarker([req.location!.lat, req.location!.lng], {
+        radius: req.urgency === "critical" ? 10 : 7,
+        fillColor: requestColor(req),
+        color: requestColor(req),
+        weight: 2,
+        fillOpacity: 0.7,
+      })
+        .bindPopup(`<strong>${req.category}</strong><br/>${req.description || "Emergency"}<br/><em>${req.status}</em>`)
+        .addTo(mapRef.current!);
+    });
+
+    // Add volunteer markers
+    volunteers.filter((v) => v.location).forEach((vol) => {
+      L.circleMarker([vol.location!.lat, vol.location!.lng], {
+        radius: 6,
+        fillColor: "#3b82f6",
+        color: "#3b82f6",
+        weight: 2,
+        fillOpacity: 0.7,
+      })
+        .bindPopup(`<strong>${vol.name}</strong><br/>${(vol.skills || []).join(", ")}<br/>${vol.available ? "Available" : "Busy"}`)
+        .addTo(mapRef.current!);
+    });
+
+    // Add NGO markers
+    ngos.filter((n) => n.location).forEach((ngo) => {
+      L.circleMarker([ngo.location!.lat, ngo.location!.lng], {
+        radius: 8,
+        fillColor: "#22c55e",
+        color: "#22c55e",
+        weight: 2,
+        fillOpacity: 0.7,
+      })
+        .bindPopup(`<strong>${ngo.ngoName}</strong><br/>${(ngo.services || []).join(", ")}<br/>Capacity: ${ngo.capacity}`)
+        .addTo(mapRef.current!);
+    });
+
+    // Add user location marker
+    if (location) {
+      L.circleMarker([location.lat, location.lng], {
+        radius: 8,
+        fillColor: "#8b5cf6",
+        color: "#8b5cf6",
+        weight: 3,
+        fillOpacity: 0.9,
+      })
+        .bindPopup("Your location")
+        .addTo(mapRef.current!);
+    }
+
+    return () => {
+      // Don't destroy map on data updates, only on unmount
+    };
+  }, [nearbyRequests, volunteers, ngos, location]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 pb-24 space-y-4">
@@ -35,7 +122,6 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs">
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emergency inline-block" /> Emergency</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-warning inline-block" /> Request</span>
@@ -44,90 +130,7 @@ export default function MapPage() {
       </div>
 
       <Card className="overflow-hidden border-border/50">
-        <div style={{ height: "400px" }}>
-          <MapContainer
-            center={center}
-            zoom={13}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={true}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-
-            {/* Requests */}
-            {nearbyRequests.filter((r) => r.location).map((req) => (
-              <CircleMarker
-                key={req.id}
-                center={[req.location!.lat, req.location!.lng]}
-                radius={req.urgency === "critical" ? 10 : 7}
-                fillColor={requestColor(req)}
-                color={requestColor(req)}
-                weight={2}
-                fillOpacity={0.7}
-              >
-                <Popup>
-                  <strong>{req.category}</strong><br />
-                  {req.description || "Emergency"}<br />
-                  <em>{req.status}</em>
-                </Popup>
-              </CircleMarker>
-            ))}
-
-            {/* Volunteers */}
-            {volunteers.filter((v) => v.location).map((vol) => (
-              <CircleMarker
-                key={vol.id}
-                center={[vol.location!.lat, vol.location!.lng]}
-                radius={6}
-                fillColor="#3b82f6"
-                color="#3b82f6"
-                weight={2}
-                fillOpacity={0.7}
-              >
-                <Popup>
-                  <strong>{vol.name}</strong><br />
-                  {vol.skills.join(", ")}<br />
-                  {vol.available ? "Available" : "Busy"}
-                </Popup>
-              </CircleMarker>
-            ))}
-
-            {/* NGOs */}
-            {ngos.filter((n) => n.location).map((ngo) => (
-              <CircleMarker
-                key={ngo.id}
-                center={[ngo.location!.lat, ngo.location!.lng]}
-                radius={8}
-                fillColor="#22c55e"
-                color="#22c55e"
-                weight={2}
-                fillOpacity={0.7}
-              >
-                <Popup>
-                  <strong>{ngo.ngoName}</strong><br />
-                  {ngo.services.join(", ")}<br />
-                  Capacity: {ngo.capacity}
-                </Popup>
-              </CircleMarker>
-            ))}
-
-            {/* User location */}
-            {location && (
-              <CircleMarker
-                center={[location.lat, location.lng]}
-                radius={8}
-                fillColor="#8b5cf6"
-                color="#8b5cf6"
-                weight={3}
-                fillOpacity={0.9}
-              >
-                <Popup>Your location</Popup>
-              </CircleMarker>
-            )}
-          </MapContainer>
-        </div>
+        <div ref={containerRef} style={{ height: "400px", width: "100%" }} />
       </Card>
     </div>
   );
