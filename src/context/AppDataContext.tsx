@@ -75,7 +75,7 @@ interface AppDataContextValue {
   currentUser: UserProfile | null;
   isAuthenticated: boolean;
   emergencyMode: boolean;
-  createEmergency: (data: { category: string; urgency: string; description: string }) => Promise<string>;
+  createEmergency: (data: Record<string, any>) => Promise<string>;
   acceptRequest: (id: string) => Promise<void>;
   assignVolunteer: (requestId: string, volunteerId: string) => Promise<void>;
   volunteerAdvance: (requestId: string, status: string) => Promise<void>;
