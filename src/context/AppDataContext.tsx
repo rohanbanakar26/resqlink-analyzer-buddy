@@ -240,7 +240,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const priorityZones = useMemo(() => buildPriorityZones([], requests), [requests]);
 
-  const createEmergency = useCallback(async (data: { category: string; urgency: string; description: string }) => {
+  const createEmergency = useCallback(async (data: Record<string, any>) => {
     const ps = calculatePriorityScore({
       averageUrgency: getUrgencyValue(data.urgency),
       severity: getSeverityValue(data.category),
@@ -253,10 +253,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       category: data.category,
       urgency: data.urgency,
       description: data.description,
-      location_lat: location.lat,
-      location_lng: location.lng,
+      location_lat: location?.lat ?? null,
+      location_lng: location?.lng ?? null,
       citizen_name: profile?.name || "",
       priority_score: ps,
+      status: "Created",
+      people_affected: data.people_affected ? parseInt(data.people_affected) || null : null,
+      volunteers_needed: data.volunteers_needed || null,
+      disaster_type: data.disaster_type || null,
+      severity_level: data.severity_level || null,
+      immediate_danger: data.immediate_danger || null,
+      landmark: data.landmark || null,
+      media_urls: data.media_urls || [],
+      food_type_needed: data.food_type_needed || null,
+      sanitization_type: data.sanitization_type || null,
+      area_size: data.area_size || null,
     }).select().single();
 
     if (error) throw error;
