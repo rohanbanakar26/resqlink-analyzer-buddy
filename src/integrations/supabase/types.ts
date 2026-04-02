@@ -16,58 +16,88 @@ export type Database = {
     Tables: {
       emergency_requests: {
         Row: {
+          area_size: string | null
           assigned_volunteer_id: string | null
           category: string
           citizen_name: string | null
           created_at: string
           description: string
+          disaster_type: string | null
           eta: number | null
+          food_type_needed: string | null
           id: string
+          immediate_danger: boolean | null
+          landmark: string | null
           location_lat: number | null
           location_lng: number | null
+          media_urls: string[] | null
           ngo_id: string | null
+          people_affected: number | null
           photo_url: string | null
           priority_score: number | null
+          sanitization_type: string | null
+          severity_level: string | null
           status: string
           updated_at: string
           urgency: string
           user_id: string
+          volunteers_needed: string | null
         }
         Insert: {
+          area_size?: string | null
           assigned_volunteer_id?: string | null
           category: string
           citizen_name?: string | null
           created_at?: string
           description?: string
+          disaster_type?: string | null
           eta?: number | null
+          food_type_needed?: string | null
           id?: string
+          immediate_danger?: boolean | null
+          landmark?: string | null
           location_lat?: number | null
           location_lng?: number | null
+          media_urls?: string[] | null
           ngo_id?: string | null
+          people_affected?: number | null
           photo_url?: string | null
           priority_score?: number | null
+          sanitization_type?: string | null
+          severity_level?: string | null
           status?: string
           updated_at?: string
           urgency?: string
           user_id: string
+          volunteers_needed?: string | null
         }
         Update: {
+          area_size?: string | null
           assigned_volunteer_id?: string | null
           category?: string
           citizen_name?: string | null
           created_at?: string
           description?: string
+          disaster_type?: string | null
           eta?: number | null
+          food_type_needed?: string | null
           id?: string
+          immediate_danger?: boolean | null
+          landmark?: string | null
           location_lat?: number | null
           location_lng?: number | null
+          media_urls?: string[] | null
           ngo_id?: string | null
+          people_affected?: number | null
           photo_url?: string | null
           priority_score?: number | null
+          sanitization_type?: string | null
+          severity_level?: string | null
           status?: string
           updated_at?: string
           urgency?: string
           user_id?: string
+          volunteers_needed?: string | null
         }
         Relationships: [
           {
